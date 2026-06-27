@@ -6,22 +6,10 @@ import {
   getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword,
   signOut, sendPasswordResetEmail, setPersistence, browserLocalPersistence, sendEmailVerification
 } from 'https://www.gstatic.com/firebasejs/12.15.0/firebase-auth.js';
+import { GEMINI_KEY, GCAL_CLIENT_ID, GCAL_API_KEY, firebaseConfig } from './config.js';
 
-const GEMINI_KEY     = 'AQ.Ab8RN6Krqrf0QVpjTiJR1AiHIogTNANpx-USFSsJ3Izf9GWd6g';
 const GEMINI_URL     = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent`;
-const GCAL_CLIENT_ID = '841935101612-tdb3vho4cfh9t4cep9l51g038sg0su73.apps.googleusercontent.com';
-const GCAL_API_KEY   = 'AIzaSyBDtH2tig1fbQYRaQcHR88ZiS9Qsaa4UqY';
 const GCAL_SCOPE     = 'https://www.googleapis.com/auth/calendar.events';
-
-const firebaseConfig = {
-  apiKey: 'AIzaSyA3xPGZ54V3hmRNrrEytnPLFo8gTXpFpzA',
-  authDomain: 'vibe2ship-project.firebaseapp.com',
-  projectId: 'vibe2ship-project',
-  storageBucket: 'vibe2ship-project.firebasestorage.app',
-  messagingSenderId: '841935101612',
-  appId: '1:841935101612:web:73874d5364c25e0f02c909',
-  measurementId: 'G-NNNHC8XDKF'
-};
 
 const XP_VALUES      = { critical:50, high:30, medium:20, low:10 };
 const XP_EARLY       = 10;
@@ -853,7 +841,7 @@ async function callGeminiChat(contents,maxTokens=300,attempt=0){
   const resp=await fetch(GEMINI_URL,{
     method:'POST',
     headers:{'Content-Type':'application/json','x-goog-api-key':GEMINI_KEY},
-    body:JSON.stringify({contents,generationConfig:{maxOutputTokens:maxTokens,temperature:0.85}})
+    body:JSON.stringify({contents,generationConfig:{maxOutputTokens:maxTokens,temperature:1.0,topP:0.95}})
   });
   const data=await resp.json();
   if(data.error){
@@ -867,11 +855,11 @@ async function callGeminiChat(contents,maxTokens=300,attempt=0){
   return data.candidates?.[0]?.content?.parts?.[0]?.text||'';
 }
 
-async function callGemini(prompt,maxTokens=200,attempt=0){
+async function callGemini(prompt,maxTokens=200,attempt=0,temperature=0.9){
   const resp=await fetch(GEMINI_URL,{
     method:'POST',
     headers:{'Content-Type':'application/json','x-goog-api-key':GEMINI_KEY},
-    body:JSON.stringify({contents:[{role:'user',parts:[{text:prompt}]}],generationConfig:{maxOutputTokens:maxTokens,temperature:0.7}})
+    body:JSON.stringify({contents:[{role:'user',parts:[{text:prompt}]}],generationConfig:{maxOutputTokens:maxTokens,temperature,topP:0.95}})
   });
   const data=await resp.json();
   if(data.error){
@@ -879,7 +867,7 @@ async function callGemini(prompt,maxTokens=200,attempt=0){
     const retryable = resp.status===503 || resp.status===429;
     if (retryable && attempt<2) {
       await sleep(1000*Math.pow(2,attempt)); // 1s, then 2s
-      return callGemini(prompt,maxTokens,attempt+1);
+      return callGemini(prompt,maxTokens,attempt+1,temperature);
     }
     throw new Error(data.error.message);
   }
@@ -914,19 +902,35 @@ async function generateAIBriefing(force=false){
 
   const now=new Date();
   const pending=tasks.filter(t=>t.status!=='done');
-  const overdue=pending.filter(t=>new Date(t.deadline)<now);
+  const overdue=pending.filter(t=>t.deadline&&new Date(t.deadline)<now);
+  const dueSoon=pending.filter(t=>t.deadline&&!overdue.includes(t)&&(new Date(t.deadline)-now)<6*3600*1000);
   const league=getLeague(player.xp||0);
-  const prompt='You are a productivity AI coach. Write 2 sentences max. Be specific and motivating. User data: '
-    +pending.length+' pending tasks, '+overdue.length+' overdue. '
-    +'Top tasks: '+pending.slice(0,3).map(t=>'"'+t.title+'" ['+t.priority+']').join(', ')+'.'
-    +' League: '+league.name+' ('+( player.xp||0)+' XP).';
+  const topTask=pending[0];
+
+  const prompt=
+    'You are a sharp, no-fluff productivity coach writing ONE short briefing (2 sentences, under 40 words total) for a dashboard widget.\n\n'
+    +'HARD RULES:\n'
+    +'- Name at least one specific task by its exact title in quotes.\n'
+    +'- Reference a real number from the data below (count of overdue, due-soon, or XP).\n'
+    +'- NEVER use these banned filler phrases or anything equivalent: "you can do it", "you got this", "keep grinding", "stay focused", "great job", "let\'s level up".\n'
+    +'- Do not restate this previous briefing verbatim, vary your wording: "'+(readBriefingCache()?.text||'')+'"\n\n'
+    +'DATA:\n'
+    +'- Time: '+now.toLocaleString()+'\n'
+    +'- Pending tasks ('+pending.length+'): '+(pending.slice(0,6).map(t=>'"'+t.title+'" ['+t.priority+', due '+(t.deadline?new Date(t.deadline).toLocaleString():'no deadline')+']').join('; ')||'none')+'\n'
+    +'- Overdue ('+overdue.length+'): '+(overdue.map(t=>'"'+t.title+'"').join(', ')||'none')+'\n'
+    +'- Due within 6h ('+dueSoon.length+'): '+(dueSoon.map(t=>'"'+t.title+'"').join(', ')||'none')+'\n'
+    +'- League: '+league.name+', '+(player.xp||0)+' XP\n'
+    +(topTask?('- Top priority task right now: "'+topTask.title+'" ['+topTask.priority+']\n'):'');
+
   try {
-    const text=await callGemini(prompt,120);
-    const finalText=text||'Ready to level up? Start with your most critical task!';
+    const text=await callGemini(prompt,160,0,1.0);
+    const finalText=text||('Start with "'+(topTask?.title||'your top task')+'" - '+overdue.length+' task(s) are already overdue.');
     if(e) e.textContent=finalText;
     writeBriefingCache(finalText);
   } catch(err) {
-    const fallback=(overdue.length?overdue.length+' tasks overdue - act now! ':'')+'You are a '+league.name+' - keep grinding to climb the leagues!';
+    const fallback=overdue.length
+      ? overdue.length+' task(s) overdue, including "'+overdue[0].title+'". Clear that before anything else.'
+      : (topTask ? 'Next up: "'+topTask.title+'" ['+topTask.priority+']. '+pending.length+' tasks remain in your queue.' : 'No pending tasks right now - add one to keep your '+league.name+' streak moving.');
     if(e) e.textContent=fallback;
     // Cache the fallback too, briefly, so a 429 burst doesn't keep retrying every load.
     if (!cache) writeBriefingCache(fallback);
@@ -969,7 +973,9 @@ window.sendChat=async function(){
   const systemPrompt='You are the Aeris AI Coach, embedded in a gamified productivity app. '
     +'Be warm but direct, like a coach who actually knows this person\'s day. '
     +'Always ground your reply in specifics from the context below (real task names, real numbers, real streaks) instead of generic motivational phrases. '
-    +'Keep replies to 2-4 sentences. Do not repeat the same phrasing you used earlier in this conversation.\n\n'
+    +'Directly answer what the user actually asked or said - do not deflect into generic pep talk if they asked something concrete. '
+    +'NEVER use these banned filler phrases or close equivalents: "you can do it", "you got this", "keep grinding", "stay focused", "great job", "let\'s level up", "believe in yourself". '
+    +'Keep replies to 2-4 sentences. Do not repeat the same phrasing or structure you used earlier in this conversation.\n\n'
     +contextBlock;
 
   // Build conversation contents: system context as first user turn, then real history.

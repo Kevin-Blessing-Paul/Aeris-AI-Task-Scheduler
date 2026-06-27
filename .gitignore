@@ -1,3 +1,4 @@
 .firebase/ 
 node_modules/ 
 .DS_Store 
+public/config.js 
