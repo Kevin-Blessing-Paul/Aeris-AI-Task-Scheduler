@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover"/>
+<title>Aeris — AI Productivity Companion</title>
+
+<!-- PWA / installable app metadata -->
+<meta name="theme-color" content="#0A0F1E"/>
+<meta name="description" content="Gamified AI productivity companion with tasks, habits, XP leagues and an AI coach."/>
+<link rel="manifest" href="manifest.json"/>
+<link rel="icon" href="icon-192.png" type="image/png"/>
+<link rel="apple-touch-icon" href="apple-touch-icon.png"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="Aeris"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="style.css?v=4"/>
+</head>
+<body>
+
+<!-- LOADER -->
+<div id="pageLoader" class="page-loader">
+  <div class="loader-inner">
+    <div class="loader-ring"></div>
+    <svg class="loader-check-svg" width="40" height="40" viewBox="0 0 40 40">
+      <path d="M10 20 L17 27 L30 13" stroke="#10B981" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" stroke-dasharray="30" stroke-dashoffset="30"/>
+    </svg>
+  </div>
+  <p class="loader-brand">Aeris</p>
+  <p class="loader-sub">Syncing your world…</p>
+</div>
+
+<!-- XP TOAST (floats up) -->
+<div class="xp-popup" id="xpPopup"></div>
+
+<!-- AUTH SCREEN -->
+<div class="auth-screen" id="authScreen">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <svg width="30" height="30" viewBox="0 0 28 28" fill="none">
+        <circle cx="14" cy="14" r="13" stroke="#6366F1" stroke-width="2"/>
+        <path d="M6 11c2.2-2.6 4.6-2.6 6.8 0c2.2 2.6 4.6 2.6 6.8 0" stroke="#10B981" stroke-opacity="0.55" stroke-width="1.8" stroke-linecap="round" fill="none"/>
+        <path d="M5.5 16.5c2.2-2.6 4.6-2.6 6.8 0c2.2 2.6 4.6 2.6 6.8 0" stroke="#10B981" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+      </svg>
+      <span class="logo-text">Aeris</span>
+    </div>
+    <p class="auth-tagline">Your AI productivity companion</p>
+
+    <div class="auth-tabs">
+      <button class="auth-tab active" id="tabLogin" onclick="switchAuthTab('login')">Log In</button>
+      <button class="auth-tab" id="tabSignup" onclick="switchAuthTab('signup')">Sign Up</button>
+    </div>
+
+    <form id="authForm" class="auth-form" autocomplete="on">
+      <div class="form-group">
+        <label>Email</label>
+        <input class="form-input" type="email" id="authEmail" placeholder="you@example.com" autocomplete="email" required/>
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input class="form-input" type="password" id="authPassword" placeholder="••••••••" autocomplete="current-password" minlength="6" required/>
+      </div>
+      <div class="form-group hidden" id="authConfirmGroup">
+        <label>Confirm Password</label>
+        <input class="form-input" type="password" id="authPasswordConfirm" placeholder="••••••••" autocomplete="new-password" minlength="6"/>
+      </div>
+
+      <p class="auth-error hidden" id="authError"></p>
+
+      <button type="submit" class="btn-primary auth-submit" id="authSubmitBtn">Log In</button>
+    </form>
+
+    <button class="auth-forgot" id="authForgotBtn" onclick="handleForgotPassword()">Forgot password?</button>
+  </div>
+</div>
+
+<!-- APP SHELL (hidden until authenticated) -->
+<div id="appShell" class="hidden">
+
+<!-- SIDEBAR -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <svg width="26" height="26" viewBox="0 0 28 28" fill="none">
+      <circle cx="14" cy="14" r="13" stroke="#6366F1" stroke-width="2"/>
+      <path d="M6 11c2.2-2.6 4.6-2.6 6.8 0c2.2 2.6 4.6 2.6 6.8 0" stroke="#10B981" stroke-opacity="0.55" stroke-width="1.8" stroke-linecap="round" fill="none"/>
+      <path d="M5.5 16.5c2.2-2.6 4.6-2.6 6.8 0c2.2 2.6 4.6 2.6 6.8 0" stroke="#10B981" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+    </svg>
+    <span class="logo-text">Aeris</span>
+  </div>
+
+  <!-- League Card -->
+  <div class="league-card" id="leagueCard">
+    <div class="league-emblem" id="leagueEmblem">⚔️</div>
+    <div class="league-info">
+      <p class="league-name" id="leagueName">Peasant</p>
+      <div class="xp-bar-wrap">
+        <div class="xp-bar" id="xpBar" style="width:0%"></div>
+      </div>
+      <p class="xp-label"><span id="currentXP">0</span> / <span id="nextXP">100</span> XP</p>
+    </div>
+  </div>
+
+  <nav class="sidebar-nav">
+    <a href="#" class="nav-item active" data-view="dashboard">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      Dashboard
+    </a>
+    <a href="#" class="nav-item" data-view="tasks">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+      My Tasks
+    </a>
+    <a href="#" class="nav-item" data-view="calendar">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      Calendar
+    </a>
+    <a href="#" class="nav-item" data-view="habits">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z"/></svg>
+      Habits
+    </a>
+    <a href="#" class="nav-item" data-view="leaderboard">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      Leaderboard
+    </a>
+    <a href="#" class="nav-item" data-view="ai-coach">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+      AI Coach
+    </a>
+  </nav>
+
+  <div class="sidebar-progress">
+    <p class="stats-label">Today</p>
+    <div class="progress-ring-wrap">
+      <svg width="72" height="72" viewBox="0 0 72 72">
+        <circle cx="36" cy="36" r="28" stroke="#1e293b" stroke-width="5" fill="none"/>
+        <circle id="progressRing" cx="36" cy="36" r="28" stroke="#6366F1" stroke-width="5" fill="none"
+          stroke-dasharray="176" stroke-dashoffset="176" stroke-linecap="round"
+          transform="rotate(-90 36 36)" style="transition:stroke-dashoffset 1.2s cubic-bezier(.4,0,.2,1)"/>
+      </svg>
+      <span id="progressPct" class="progress-pct">0%</span>
+    </div>
+    <p class="stats-sub"><span id="doneTasks">0</span>/<span id="totalTasks">0</span> done</p>
+  </div>
+
+  <div class="sidebar-gcal">
+    <button class="gcal-btn" id="gcalBtn" onclick="connectGoogleCalendar()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      Connect Calendar
+    </button>
+    <div id="gcalStatus" class="gcal-status hidden"></div>
+    <p class="gcal-note">This app is in Google test mode — a "Google hasn't verified this app" notice may appear. This is expected during evaluation and not a malfunction.</p>
+  </div>
+
+  <div class="sidebar-gcal">
+    <button class="gcal-btn" id="notifBtn" onclick="enableReminders()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+      Enable Reminders
+    </button>
+    <p class="gcal-note" id="notifNote">Get a browser notification when a task is due within 15 minutes.</p>
+  </div>
+
+  <div class="sidebar-account">
+    <div class="account-info">
+      <div class="account-avatar" id="accountAvatar">?</div>
+      <span class="account-email" id="accountEmail">—</span>
+    </div>
+    <button class="logout-btn" id="logoutBtn" onclick="handleLogout()" title="Log out">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+    </button>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<main class="main">
+  <header class="topbar">
+    <div>
+      <h1 id="viewTitle" class="view-title">Dashboard</h1>
+      <p id="viewSubtitle" class="view-subtitle">Here's what needs your attention</p>
+    </div>
+    <div class="topbar-right">
+      <div class="search-wrap">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input class="search-input" placeholder="Search tasks…" id="searchInput" oninput="filterTasks()"/>
+      </div>
+      <button class="add-task-btn" onclick="openAddTask()">+ Add Task</button>
+    </div>
+  </header>
+
+  <!-- ===== DASHBOARD ===== -->
+  <section class="view active" id="view-dashboard">
+    <div class="stats-row">
+      <div class="stat-card stat-urgent"><div class="stat-icon urgent-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div><div><p class="stat-num" id="urgentCount">0</p><p class="stat-lbl">Urgent</p></div></div>
+      <div class="stat-card stat-today"><div class="stat-icon today-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div><div><p class="stat-num" id="todayCount">0</p><p class="stat-lbl">Due Today</p></div></div>
+      <div class="stat-card stat-xp"><div class="stat-icon xp-icon">⚡</div><div><p class="stat-num" id="totalXPStat">0</p><p class="stat-lbl">Total XP</p></div></div>
+      <div class="stat-card stat-done"><div class="stat-icon done-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div><div><p class="stat-num" id="completedCount">0</p><p class="stat-lbl">Completed</p></div></div>
+    </div>
+
+    <div class="ai-banner">
+      <div class="ai-avatar-sm">✦</div>
+      <div class="ai-banner-text">
+        <p class="ai-banner-title">Gemini Daily Briefing</p>
+        <p class="ai-banner-body" id="aiBriefing">Generating your briefing…</p>
+      </div>
+      <button class="refresh-btn" onclick="generateAIBriefing()">↻</button>
+    </div>
+
+    <div class="dashboard-grid">
+      <div>
+        <h2 class="section-heading">Priority Queue</h2>
+        <div class="task-list" id="dashTaskList"></div>
+      </div>
+      <div>
+        <h2 class="section-heading">AI Recommendations</h2>
+        <div id="aiRecs" class="ai-recs-list"></div>
+        <h2 class="section-heading" style="margin-top:20px">Upcoming 7 Days</h2>
+        <div id="upcomingList" class="upcoming-list"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== TASKS ===== -->
+  <section class="view" id="view-tasks">
+    <div class="tasks-filters">
+      <button class="filter-btn active" onclick="filterByStatus('all',this)">All</button>
+      <button class="filter-btn" onclick="filterByStatus('pending',this)">Pending</button>
+      <button class="filter-btn" onclick="filterByStatus('in-progress',this)">In Progress</button>
+      <button class="filter-btn" onclick="filterByStatus('done',this)">Completed</button>
+    </div>
+    <div class="task-list full" id="allTaskList"></div>
+  </section>
+
+  <!-- ===== CALENDAR ===== -->
+  <section class="view" id="view-calendar">
+    <div class="calendar-wrap">
+      <div class="cal-header">
+        <button class="cal-nav" onclick="changeMonth(-1)">&#8592;</button>
+        <h2 id="calMonthLabel" class="cal-month"></h2>
+        <button class="cal-nav" onclick="changeMonth(1)">&#8594;</button>
+      </div>
+      <div class="cal-grid-header"><span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span></div>
+      <div class="cal-grid" id="calGrid"></div>
+      <div class="cal-events" id="calEvents"><p class="no-events">Click a date to see tasks</p></div>
+    </div>
+  </section>
+
+  <!-- ===== HABITS ===== -->
+  <section class="view" id="view-habits">
+    <div class="habits-header"><button class="add-task-btn" onclick="openAddHabit()">+ Add Habit</button></div>
+    <div class="habits-grid" id="habitsGrid"></div>
+  </section>
+
+  <!-- ===== LEADERBOARD ===== -->
+  <section class="view" id="view-leaderboard">
+    <div class="league-showcase" id="leagueShowcase"></div>
+    <div class="leaderboard-wrap">
+      <h2 class="section-heading">League Standings</h2>
+      <div id="leaderboardList" class="leaderboard-list"></div>
+    </div>
+    <div class="xp-log-wrap">
+      <h2 class="section-heading" style="margin-top:24px">XP History</h2>
+      <div id="xpLog" class="xp-log"></div>
+    </div>
+  </section>
+
+  <!-- ===== AI COACH ===== -->
+  <section class="view" id="view-ai-coach">
+    <div class="chat-wrap">
+      <div class="chat-messages" id="chatMessages">
+        <div class="chat-msg ai">
+          <div class="chat-avatar">N</div>
+          <div class="chat-bubble">Hi! I'm your Aeris AI Coach powered by Gemini. I can see your tasks, streaks and XP. What should we work on?</div>
+        </div>
+      </div>
+      <div class="chat-chips">
+        <button class="chip" onclick="quickChat('What should I focus on right now?')">What to focus on?</button>
+        <button class="chip" onclick="quickChat('Help me plan my day')">Plan my day</button>
+        <button class="chip" onclick="quickChat('I feel overwhelmed, help me prioritize')">Feeling overwhelmed</button>
+        <button class="chip" onclick="quickChat('Break down my most urgent task into steps')">Break down task</button>
+      </div>
+      <div class="chat-input-wrap">
+        <input class="chat-input" id="chatInput" placeholder="Ask anything…" onkeydown="if(event.key==='Enter')sendChat()"/>
+        <button class="chat-send" onclick="sendChat()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        </button>
+      </div>
+    </div>
+  </section>
+</main>
+
+</div><!-- /appShell -->
+
+<!-- TASK MODAL -->
+<div class="modal-overlay" id="taskModal" onclick="if(event.target===this)closeModal('taskModal')">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="modalTitle">Add Task</h3>
+      <button class="modal-close" onclick="closeModal('taskModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="editTaskId"/>
+      <div class="form-group"><label>Title</label><input class="form-input" id="taskTitle" placeholder="Task name"/></div>
+      <div class="form-group"><label>Description</label><textarea class="form-input" id="taskDesc" rows="2" placeholder="Optional notes…"></textarea></div>
+      <div class="form-row">
+        <div class="form-group"><label>Deadline</label><input class="form-input" type="datetime-local" id="taskDeadline"/></div>
+        <div class="form-group"><label>Priority</label>
+          <select class="form-input" id="taskPriority">
+            <option value="critical">🔴 Critical (+50 XP)</option>
+            <option value="high">🟠 High (+30 XP)</option>
+            <option value="medium" selected>🟡 Medium (+20 XP)</option>
+            <option value="low">🟢 Low (+10 XP)</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Category</label>
+          <select class="form-input" id="taskCategory">
+            <option value="work">💼 Work</option>
+            <option value="study">📚 Study</option>
+            <option value="personal">🏠 Personal</option>
+            <option value="health">💪 Health</option>
+            <option value="finance">💰 Finance</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Status</label>
+          <select class="form-input" id="taskStatus">
+            <option value="pending">Pending</option>
+            <option value="in-progress">In Progress</option>
+            <option value="done">Done</option>
+          </select>
+        </div>
+      </div>
+      <!-- Subtasks -->
+      <div class="form-group">
+        <label>Subtasks <span style="color:var(--slate);font-size:11px">(+5 XP each)</span></label>
+        <div id="subtaskList" class="subtask-list"></div>
+        <div class="subtask-add-row">
+          <input class="form-input" id="subtaskInput" placeholder="Add subtask…" onkeydown="if(event.key==='Enter'){event.preventDefault();addSubtaskToForm()}"/>
+          <button class="btn-secondary" style="padding:7px 12px;font-size:12px" onclick="addSubtaskToForm()">+ Add</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="checkbox-label">
+          <input type="checkbox" id="taskGcal"/>
+          <span>Add to Google Calendar</span>
+          <span class="badge-gcal" id="gcalBadge">Not connected</span>
+        </label>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeModal('taskModal')">Cancel</button>
+      <button class="btn-primary" onclick="saveTask()">Save Task</button>
+    </div>
+  </div>
+</div>
+
+<!-- HABIT MODAL -->
+<div class="modal-overlay" id="habitModal" onclick="if(event.target===this)closeModal('habitModal')">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Add Habit</h3>
+      <button class="modal-close" onclick="closeModal('habitModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group"><label>Name</label><input class="form-input" id="habitName" placeholder="e.g. Morning meditation"/></div>
+      <div class="form-row">
+        <div class="form-group"><label>Frequency</label>
+          <select class="form-input" id="habitFreq"><option value="daily">Daily</option><option value="weekly">Weekly</option></select>
+        </div>
+        <div class="form-group"><label>Icon</label>
+          <select class="form-input" id="habitIcon">
+            <option value="🧘">🧘 Meditate</option><option value="📖">📖 Read</option>
+            <option value="💪">💪 Exercise</option><option value="💧">💧 Hydrate</option>
+            <option value="🛌">🛌 Sleep Early</option><option value="✍️">✍️ Journal</option>
+            <option value="🎯">🎯 Focus</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeModal('habitModal')">Cancel</button>
+      <button class="btn-primary" onclick="saveHabit()">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<script type="module" src="app.js?v=10"></script>
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js').catch(()=>{});
+    });
+  }
+</script>
+</body>
+</html>
