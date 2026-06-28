@@ -982,7 +982,7 @@ window.sendChat=async function(){
   const contents=[
     {role:'user',parts:[{text:systemPrompt+'\n\nAcknowledge briefly that you have this context, then wait for my message.'}]},
     {role:'model',parts:[{text:'Got it — I can see your tasks, habits and progress. What\'s up?'}]},
-    ...chatHistory.slice(-10).map(h=>({role:h.role==='user'?'user':'model',parts:[{text:h.text}]}))
+    ...chatHistory.slice(-2).map(h=>({role:h.role==='user'?'user':'model',parts:[{text:h.text}]}))
   ];
 
   try {
