@@ -606,6 +606,90 @@ function renderFormSubtasks(){
   e.innerHTML=formSubtasks.map(s=>'<div class="subtask-form-item"><span>'+esc(s.title)+'</span><button onclick="removeFormSubtask(\''+s.id+'\')">x</button></div>').join('');
 }
 
+// ===== AI TASK SETUP =====
+function toggleAITaskPanel(){
+  const body=document.getElementById('aiTaskBody');
+  if (body) body.classList.toggle('hidden');
+}
+window.toggleAITaskPanel=toggleAITaskPanel;
+
+const ALLOWED_PRIORITIES=['critical','high','medium','low'];
+const ALLOWED_CATEGORIES=['work','study','personal','health','finance'];
+
+async function generateTasksFromText(){
+  const input=document.getElementById('aiTaskInput');
+  const btn=document.getElementById('aiTaskGenBtn');
+  const text=input?.value.trim();
+  if(!text){ toast('Describe what you need to get done first','error'); return; }
+
+  btn.disabled=true;
+  const originalLabel=btn.textContent;
+  btn.textContent='Generating…';
+
+  const now=new Date();
+  const pad=n=>String(n).padStart(2,'0');
+  const nowLocal=now.getFullYear()+'-'+pad(now.getMonth()+1)+'-'+pad(now.getDate())+'T'+pad(now.getHours())+':'+pad(now.getMinutes());
+  const prompt=
+    'You convert a person\'s free-text description of their day/goals into a structured task list for a productivity app.\n'
+    +'Return ONLY a raw JSON array, no markdown fences, no commentary, no explanation. Each item must be an object with exactly these fields:\n'
+    +'- "title": string, short and specific (max 8 words)\n'
+    +'- "desc": string, one short sentence of extra detail, or "" if none\n'
+    +'- "priority": one of "critical","high","medium","low" - infer from urgency/importance described\n'
+    +'- "category": one of "work","study","personal","health","finance" - infer from context\n'
+    +'- "deadline": a datetime string in the exact format "YYYY-MM-DDTHH:mm" (24-hour, no timezone suffix) for when it is due, in the person\'s local time. If the person gives a relative time ("tomorrow", "Thursday", "in 3 days"), compute the absolute date using the current local date/time given below. If no timing is mentioned for an item, set deadline to null.\n\n'
+    +'Current local date/time: '+nowLocal+' ('+['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][now.getDay()]+')\n\n'
+    +'Person\'s description:\n"'+text+'"\n\n'
+    +'Split distinct goals/commitments into separate tasks. Do not invent tasks that were not implied by the description. Return the JSON array now.';
+
+  try {
+    const raw=await callGemini(prompt,1000,0,0.3);
+    const cleaned=raw.replace(/```json|```/g,'').trim();
+    const parsed=JSON.parse(cleaned);
+    if(!Array.isArray(parsed)||!parsed.length) throw new Error('No tasks returned');
+
+    const created=[];
+    for(const item of parsed){
+      const title=(item.title||'').toString().trim().slice(0,120);
+      if(!title) continue;
+      const priority=ALLOWED_PRIORITIES.includes(item.priority)?item.priority:'medium';
+      const category=ALLOWED_CATEGORIES.includes(item.category)?item.category:'personal';
+      let deadline='';
+      if(item.deadline){
+        const d=new Date(item.deadline);
+        if(!isNaN(d.getTime())){
+          // Store as local "YYYY-MM-DDTHH:mm" to match the datetime-local input format
+          // used by manual task entry (avoids a UTC offset bug from toISOString()).
+          const pad=n=>String(n).padStart(2,'0');
+          deadline=d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+'T'+pad(d.getHours())+':'+pad(d.getMinutes());
+        }
+      }
+      const task={title,desc:(item.desc||'').toString().slice(0,300),deadline,priority,category,status:'pending',subtasks:[],penalised:false,created:new Date().toISOString()};
+      const id=uid();
+      try { if(db) await setDoc(doc(db,'users',currentUid,'tasks',id),task); } catch(e){}
+      tasks.push({id,...task});
+      created.push(task);
+    }
+
+    saveLocal();
+    renderAll();
+    input.value='';
+    document.getElementById('aiTaskBody')?.classList.add('hidden');
+
+    if(created.length){
+      toast('Added '+created.length+' task'+(created.length>1?'s':'')+' from AI','success');
+      appendChat('ai','I set up '+created.length+' task'+(created.length>1?'s':'')+' for you: '+created.map(t=>'"'+t.title+'"').join(', ')+'. You can edit any of them in My Tasks.');
+    } else {
+      toast('Could not find any clear tasks in that - try adding more detail', 'error');
+    }
+  } catch(err) {
+    toast('AI task generation failed - try again in a moment', 'error');
+  } finally {
+    btn.disabled=false;
+    btn.textContent=originalLabel;
+  }
+}
+window.generateTasksFromText=generateTasksFromText;
+
 window.saveTask=async function(){
   const title=document.getElementById('taskTitle').value.trim();
   if(!title){ toast('Enter a task title','error'); return; }

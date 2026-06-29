@@ -304,3 +304,14 @@ select.form-input option{background:var(--navy2)}
 
 /* ── GCAL NOTE ── */
 .gcal-note{font-size:10px;color:var(--slate);line-height:1.4;margin-top:6px;padding:0 2px}
+
+/* ── AI TASK SETUP PANEL ── */
+.ai-task-setup{margin:0 28px 14px;padding-top:4px}
+.ai-task-toggle{display:flex;align-items:center;gap:7px;background:var(--card);border:1px solid var(--border);color:var(--indigo2);font-size:12.5px;font-weight:600;padding:9px 14px;border-radius:10px;cursor:pointer;transition:all .15s;font-family:'Inter',sans-serif}
+.ai-task-toggle:hover{border-color:var(--indigo);background:rgba(99,102,241,.08)}
+.ai-task-body{margin-top:10px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px}
+.ai-task-body.hidden{display:none}
+.ai-task-textarea{width:100%;min-height:80px;background:var(--navy2);border:1px solid var(--border);border-radius:8px;color:var(--white);font-family:'Inter',sans-serif;font-size:13px;padding:10px;resize:vertical;margin-bottom:10px}
+.ai-task-textarea:focus{outline:none;border-color:var(--indigo)}
+.ai-task-generate{font-size:12.5px;padding:9px 16px}
+.ai-task-generate:disabled{opacity:.6;cursor:not-allowed}

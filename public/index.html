@@ -17,7 +17,7 @@
 <meta name="mobile-web-app-capable" content="yes"/>
 
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
-<link rel="stylesheet" href="style.css?v=4"/>
+<link rel="stylesheet" href="style.css?v=5"/>
 </head>
 <body>
 
@@ -266,10 +266,20 @@
 
   <!-- ===== AI COACH ===== -->
   <section class="view" id="view-ai-coach">
+    <div class="ai-task-setup">
+      <button class="ai-task-toggle" id="aiTaskToggle" onclick="toggleAITaskPanel()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l2.5 6.5L21 11l-6.5 2.5L12 20l-2.5-6.5L3 11l6.5-2.5L12 2z"/></svg>
+        Let AI set up tasks for me
+      </button>
+      <div class="ai-task-body hidden" id="aiTaskBody">
+        <textarea class="ai-task-textarea" id="aiTaskInput" placeholder="Describe what's going on - e.g. 'I have a math exam Thursday, need to submit a report by tomorrow 6pm, and want to start going to the gym 3x a week'"></textarea>
+        <button class="btn-primary ai-task-generate" id="aiTaskGenBtn" onclick="generateTasksFromText()">Generate tasks</button>
+      </div>
+    </div>
     <div class="chat-wrap">
       <div class="chat-messages" id="chatMessages">
         <div class="chat-msg ai">
-          <div class="chat-avatar">N</div>
+          <div class="chat-avatar">A</div>
           <div class="chat-bubble">Hi! I'm your Aeris AI Coach powered by Gemini. I can see your tasks, streaks and XP. What should we work on?</div>
         </div>
       </div>
@@ -386,7 +396,7 @@
 </div>
 
 <div class="toast" id="toast"></div>
-<script type="module" src="app.js?v=12"></script>
+<script type="module" src="app.js?v=13"></script>
 <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
