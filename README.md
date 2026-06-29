@@ -23,6 +23,22 @@ Aeris is a gamified task & habit tracker with an AI coach, XP/leagues, Google Ca
 - Calendar: Google Calendar API + Google Identity Services (OAuth)
 - PWA: Web App Manifest + Service Worker
 
+## Google Technologies Used
+
+Google's stack powers nearly every functional layer of Aeris, not just the AI features:
+
+- **Google Gemini API** (`gemini-2.5-flash-lite`) — the primary AI engine, powering the AI Coach chat, the daily dashboard briefing, and AI Task Setup (natural-language → structured task generation).
+- **Firebase Authentication** — email/password sign-up, login, session persistence, and password reset.
+- **Cloud Firestore** — the application's database, storing all per-user tasks, habits, XP/league data, and chat-relevant state.
+- **Firebase Hosting** — deployment and serving of the live application, running on Google Cloud Platform infrastructure.
+- **Google Calendar API** — syncing task deadlines to a user's own Google Calendar.
+- **Google Identity Services (OAuth 2.0)** — authorizing the Calendar connection per user.
+- **Google AI Studio** — used to generate and manage the Gemini API key used in development and deployment.
+- **Google Fonts** (Space Grotesk, Inter) — the application's typography, loaded via `fonts.googleapis.com`.
+- **Firebase JS SDK** (via `gstatic.com`) — the client libraries for Auth and Firestore.
+
+**On AI tool usage during development:** Gemini is the AI used *within* the running application itself (the coach, briefing, and task generation features described above). Anthropic's Claude was used separately, during development, as a coding assistant — to scaffold, debug, refactor, and harden the application's code (authentication flow, Firestore security rules, PWA setup, secret management, prompt engineering, etc.). The product's end-user AI experience is Gemini; Claude's involvement was in building and refining the codebase itself.
+
 ## Project Structure
 
 ```
